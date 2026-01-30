@@ -145,3 +145,19 @@ jumpserver-go/
 ## 开源协议
 
 本项目采用 [MIT License](LICENSE) 开源。
+
+---
+
+## 推送到 GitHub
+
+1. 在 [GitHub](https://github.com/new) 新建仓库（如 `jumpserver-go`），不要勾选「Add a README」。
+2. 在本地执行（将 `YOUR_USERNAME` 换成你的 GitHub 用户名）：
+
+```bash
+cd /path/to/jumpserver-go
+git remote add origin https://github.com/YOUR_USERNAME/jumpserver-go.git
+git branch -M main
+git push -u origin main
+```
+
+若使用 SSH：`git remote add origin git@github.com:YOUR_USERNAME/jumpserver-go.git`
