@@ -1,0 +1,9 @@
+# 编译产物与本地应用
+/ssh-manager
+SSH-Manager.app/
+*.exe
+
+# 缓存与系统
+.cache/
+.gomod/
+.DS_Store

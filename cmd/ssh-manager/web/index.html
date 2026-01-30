@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SSH 主机管理</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(160deg, #0f1115 0%, #1a1d23 50%, #16181d 100%);
+      color: #e4e4e7;
+      min-height: 100vh;
+    }
+    /* 主界面：全宽布局，内容区约 90% 视口宽，最大 1600px，留白舒适 */
+    #mainScreen {
+      width: 100%;
+      max-width: 100%;
+      min-height: 100vh;
+      padding: 0;
+      margin: 0;
+    }
+    .main-inner {
+      width: 90%;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 28px 32px 48px;
+    }
+    .main-header {
+      background: rgba(37, 40, 48, 0.85);
+      border-bottom: 1px solid #2d3139;
+      padding: 16px 0;
+      margin-bottom: 24px;
+    }
+    .main-header .main-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .main-header h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      margin: 0;
+      color: #fafafa;
+      letter-spacing: -0.02em;
+    }
+    .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .toolbar .spacer { flex: 1; min-width: 20px; }
+    .group {
+      margin-bottom: 16px;
+      border-radius: 12px;
+      background: rgba(37, 40, 48, 0.6);
+      border: 1px solid #2d3139;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .group-header {
+      padding: 14px 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      user-select: none;
+      font-weight: 500;
+      color: #e4e4e7;
+      transition: background 0.15s;
+    }
+    .group-header:hover { background: rgba(45, 49, 57, 0.8); }
+    .group-header .arrow { transition: transform 0.2s; color: #71717a; font-size: 0.75rem; }
+    .group-header.open .arrow { transform: rotate(90deg); }
+    .group-body { display: none; padding: 8px 12px 12px; }
+    .group-body.open { display: block; }
+    .server {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 20px 12px 24px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      background: rgba(45, 49, 57, 0.5);
+      border: 1px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .server:last-child { margin-bottom: 0; }
+    .server:hover { background: rgba(55, 59, 69, 0.7); border-color: #3f3f46; }
+    .server-name { font-weight: 500; min-width: 140px; color: #f4f4f5; }
+    .server-host { color: #a1a1aa; font-size: 0.9rem; min-width: 140px; }
+    .server-user { color: #71717a; font-size: 0.875rem; min-width: 80px; }
+    .server-auth { font-size: 0.8rem; color: #71717a; min-width: 48px; }
+    .spacer { flex: 1; }
+    .btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .btn-connect { background: #3b82f6; color: #fff; }
+    .btn-connect:hover { background: #2563eb; }
+    .btn-connect:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-edit { background: #52525b; color: #fff; }
+    .btn-edit:hover { background: #3f3f46; }
+    .btn-delete { background: #dc2626; color: #fff; }
+    .btn-delete:hover { background: #b91c1c; }
+    .btn-add { background: #16a34a; color: #fff; padding: 8px 18px; }
+    .btn-add:hover { background: #15803d; }
+    .btn-logout { background: #3f3f46; color: #a1a1aa; }
+    .btn-logout:hover { background: #52525b; color: #fff; }
+    .btn-export { background: #0ea5e9; color: #fff; }
+    .btn-export:hover { background: #0284c7; }
+    .btn-import { background: #8b5cf6; color: #fff; }
+    .btn-import:hover { background: #7c3aed; }
+    .btn-reset { background: #64748b; color: #fff; }
+    .btn-reset:hover { background: #475569; }
+    .empty { color: #71717a; padding: 24px; text-align: center; }
+    .error { color: #f87171; padding: 8px 0; }
+    .loading { color: #a1a1aa; }
+    .modal-mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-mask.hidden { display: none; }
+    .modal {
+      background: #252830;
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    .modal h2 { margin: 0 0 16px 0; font-size: 1.25rem; }
+    .form-row { margin-bottom: 12px; }
+    .form-row label { display: block; margin-bottom: 4px; color: #a1a1aa; font-size: 0.875rem; }
+    .form-row input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #e4e4e7;
+      font-size: 0.875rem;
+    }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .modal-actions .btn { padding: 8px 16px; }
+    .btn-cancel { background: #3f3f46; color: #fff; }
+    .btn-cancel:hover { background: #52525b; }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading" style="padding:48px;text-align:center;">检测登录状态…</div>
+  <div id="mainScreen" style="display:none;">
+    <header class="main-header">
+      <div class="main-inner">
+        <h1>SSH 主机管理</h1>
+        <div class="toolbar">
+          <button type="button" class="btn btn-add" id="btnAdd">+ 添加服务器</button>
+          <button type="button" class="btn btn-export" id="btnExport">导出配置</button>
+          <button type="button" class="btn btn-import" id="btnImport">导入配置</button>
+          <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+          <span class="spacer"></span>
+          <button type="button" class="btn btn-reset" id="btnReset">重设密码</button>
+          <button type="button" class="btn btn-logout" id="btnLogout">退出登录</button>
+        </div>
+      </div>
+    </header>
+    <div class="main-inner">
+      <p class="loading" id="status">加载中…</p>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <div class="modal-mask hidden" id="resetModalMask">
+    <div class="modal">
+      <h2>重设主密码</h2>
+      <p style="color:#a1a1aa;font-size:0.875rem;margin-bottom:16px;">需验证当前密码后设置新密码（至少 6 位）</p>
+      <div id="resetError" class="auth-error hidden"></div>
+      <form id="resetForm">
+        <div class="form-row">
+          <label>当前密码</label>
+          <input type="password" id="resetCurrent" required placeholder="当前主密码" autocomplete="current-password">
+        </div>
+        <div class="form-row">
+          <label>新密码</label>
+          <input type="password" id="resetNew" required placeholder="至少 6 位" autocomplete="new-password">
+        </div>
+        <div class="form-row">
+          <label>确认新密码</label>
+          <input type="password" id="resetConfirm" required placeholder="再次输入" autocomplete="new-password">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-cancel" id="resetCancel">取消</button>
+          <button type="submit" class="btn btn-add">确定重设</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-mask hidden" id="importModalMask">
+    <div class="modal">
+      <h2>导入配置</h2>
+      <p id="importSummary" style="color:#a1a1aa;font-size:0.875rem;margin-bottom:12px;"></p>
+      <div class="form-row">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="importReplace">
+          <span>替换当前全部配置（不勾选则与当前配置合并）</span>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-cancel" id="importCancel">取消</button>
+        <button type="button" class="btn btn-add" id="importConfirm">确定导入</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask hidden" id="modalMask">
+    <div class="modal">
+      <h2 id="modalTitle">添加服务器</h2>
+      <form id="serverForm">
+        <input type="hidden" id="serverId" value="">
+        <div class="form-row">
+          <label>名称</label>
+          <input type="text" id="name" required placeholder="例如：生产机">
+        </div>
+        <div class="form-row">
+          <label>主机 (IP 或域名)</label>
+          <input type="text" id="host" required placeholder="192.168.1.1">
+        </div>
+        <div class="form-row">
+          <label>端口</label>
+          <input type="number" id="port" value="22" min="1" max="65535" placeholder="22">
+        </div>
+        <div class="form-row">
+          <label>用户</label>
+          <input type="text" id="user" required placeholder="root">
+        </div>
+        <div class="form-row">
+          <label>密码（可选，与证书二选一）</label>
+          <input type="password" id="password" placeholder="留空则使用证书">
+        </div>
+        <div class="form-row">
+          <label>证书路径（可选）</label>
+          <input type="text" id="keyPath" placeholder="/path/to/id_rsa">
+        </div>
+        <div class="form-row">
+          <label>分组</label>
+          <input type="text" id="group" placeholder="例如：生产 / 测试">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-cancel" id="btnCancel">取消</button>
+          <button type="submit" class="btn btn-add">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const mainScreen = document.getElementById('mainScreen');
+    const loadingEl = document.getElementById('loading');
+    const listEl = document.getElementById('list');
+    const statusEl = document.getElementById('status');
+    const modalMask = document.getElementById('modalMask');
+    const modalTitle = document.getElementById('modalTitle');
+    const serverForm = document.getElementById('serverForm');
+    const serverIdEl = document.getElementById('serverId');
+
+    const fetchOpts = { credentials: 'include' };
+
+    function goLogin() { window.location.replace('login.html'); }
+
+    async function checkAuth() {
+      try {
+        const r = await fetch('/api/auth/status', fetchOpts);
+        if (!r.ok) { goLogin(); return; }
+        const data = await r.json();
+        if (data.need_setup === true) {
+          window.location.replace('initpassword.html');
+          return;
+        }
+        if (data.logged_in !== true) {
+          goLogin();
+          return;
+        }
+        loadingEl.style.display = 'none';
+        mainScreen.style.display = 'block';
+        load();
+      } catch (e) {
+        goLogin();
+      }
+    }
+
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST', ...fetchOpts });
+      goLogin();
+    });
+
+    const resetModalMask = document.getElementById('resetModalMask');
+    const resetError = document.getElementById('resetError');
+    document.getElementById('btnReset').addEventListener('click', () => {
+      resetError.classList.add('hidden');
+      document.getElementById('resetCurrent').value = '';
+      document.getElementById('resetNew').value = '';
+      document.getElementById('resetConfirm').value = '';
+      resetModalMask.classList.remove('hidden');
+    });
+    document.getElementById('resetCancel').addEventListener('click', () => resetModalMask.classList.add('hidden'));
+    resetModalMask.addEventListener('click', (e) => {
+      if (e.target.id === 'resetModalMask') resetModalMask.classList.add('hidden');
+    });
+    document.getElementById('resetForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      resetError.classList.add('hidden');
+      const current = document.getElementById('resetCurrent').value;
+      const newPwd = document.getElementById('resetNew').value;
+      const confirm = document.getElementById('resetConfirm').value;
+      if (newPwd !== confirm) {
+        resetError.textContent = '两次新密码不一致';
+        resetError.classList.remove('hidden');
+        return;
+      }
+      try {
+        const r = await fetch('/api/auth/reset', {
+          method: 'POST',
+          ...fetchOpts,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ current_password: current, new_password: newPwd, confirm })
+        });
+        if (r.status === 401) {
+          resetError.textContent = '当前密码错误';
+          resetError.classList.remove('hidden');
+          return;
+        }
+        if (!r.ok) {
+          resetError.textContent = await r.text() || '重设失败';
+          resetError.classList.remove('hidden');
+          return;
+        }
+        resetModalMask.classList.add('hidden');
+      } catch (err) {
+        resetError.textContent = err.message || '网络错误';
+        resetError.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('btnExport').addEventListener('click', async () => {
+      try {
+        const r = await fetch('/api/export', fetchOpts);
+        if (r.status === 401) { goLogin(); return; }
+        if (!r.ok) throw new Error(r.statusText);
+        const blob = await r.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'ssh-manager-servers.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch (e) {
+        statusEl.textContent = '导出失败: ' + e.message;
+        statusEl.className = 'error';
+      }
+    });
+
+    let pendingImport = null;
+    document.getElementById('btnImport').addEventListener('click', () => {
+      document.getElementById('importFile').value = '';
+      document.getElementById('importFile').click();
+    });
+    document.getElementById('importFile').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          const servers = data.servers && Array.isArray(data.servers) ? data.servers : [];
+          if (!servers.length) {
+            statusEl.textContent = '导入文件格式错误或为空（需包含 servers 数组）';
+            statusEl.className = 'error';
+            return;
+          }
+          pendingImport = { servers };
+          document.getElementById('importSummary').textContent = '已选择文件，共 ' + servers.length + ' 台服务器。';
+          document.getElementById('importReplace').checked = false;
+          document.getElementById('importModalMask').classList.remove('hidden');
+        } catch (err) {
+          statusEl.textContent = '导入文件不是有效 JSON: ' + err.message;
+          statusEl.className = 'error';
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+    document.getElementById('importCancel').addEventListener('click', () => {
+      pendingImport = null;
+      document.getElementById('importModalMask').classList.add('hidden');
+    });
+    document.getElementById('importConfirm').addEventListener('click', async () => {
+      if (!pendingImport) return;
+      try {
+        const replace = document.getElementById('importReplace').checked;
+        const r = await fetch('/api/import', {
+          method: 'POST',
+          ...fetchOpts,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ servers: pendingImport.servers, replace })
+        });
+        if (r.status === 401) { goLogin(); return; }
+        if (!r.ok) throw new Error(await r.text());
+        document.getElementById('importModalMask').classList.add('hidden');
+        pendingImport = null;
+        load();
+      } catch (err) {
+        statusEl.textContent = '导入失败: ' + err.message;
+        statusEl.className = 'error';
+      }
+    });
+
+    async function load() {
+      try {
+        const r = await fetch('/api/servers', fetchOpts);
+        if (r.status === 401) {
+          goLogin();
+          return;
+        }
+        if (!r.ok) throw new Error(r.statusText);
+        const data = await r.json();
+        statusEl.textContent = '点击分组展开/收起；「连接」会在系统终端新开窗口执行 SSH。';
+        statusEl.className = '';
+        render(data.groups || []);
+      } catch (e) {
+        statusEl.textContent = '加载失败: ' + e.message;
+        statusEl.className = 'error';
+      }
+    }
+
+    function render(groups) {
+      if (!groups.length) {
+        listEl.innerHTML = '<p class="empty">暂无主机，点击上方「添加服务器」添加。</p>';
+        return;
+      }
+      listEl.innerHTML = groups.map((g, gi) => {
+        const id = 'g' + gi;
+        const serversHtml = (g.servers || []).map(s => `
+          <div class="server" data-id="${s.id}">
+            <span class="server-name">${escapeHtml(s.name)}</span>
+            <span class="server-host">${escapeHtml(s.host)}${s.port && s.port !== 22 ? ':' + s.port : ''}</span>
+            <span class="server-user">${escapeHtml(s.user)}</span>
+            <span class="server-auth">${s.key_path ? '证书' : '密码'}</span>
+            <span class="spacer"></span>
+            <button type="button" class="btn btn-connect" data-id="${s.id}">连接</button>
+            <button type="button" class="btn btn-edit" data-id="${s.id}">编辑</button>
+            <button type="button" class="btn btn-delete" data-id="${s.id}">删除</button>
+          </div>
+        `).join('');
+        return `
+          <div class="group" data-group-id="${id}">
+            <div class="group-header" data-toggle="${id}" role="button" tabindex="0">
+              <span class="arrow">▶</span>
+              <span>${escapeHtml(g.name)}</span>
+              <span style="color:#71717a;font-size:0.85rem;">(${(g.servers || []).length} 台)</span>
+            </div>
+            <div class="group-body" id="${id}">${serversHtml}</div>
+          </div>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('.group-header').forEach(h => {
+        h.addEventListener('click', () => {
+          const id = h.dataset.toggle;
+          const body = document.getElementById(id);
+          if (body) { body.classList.toggle('open'); h.classList.toggle('open'); }
+        });
+      });
+      listEl.querySelectorAll('.btn-connect').forEach(btn => {
+        btn.addEventListener('click', () => connect(btn.dataset.id, btn));
+      });
+      listEl.querySelectorAll('.btn-edit').forEach(btn => {
+        btn.addEventListener('click', () => openEdit(btn.dataset.id));
+      });
+      listEl.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', () => doDelete(btn.dataset.id));
+      });
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    async function connect(id, btn) {
+      btn.disabled = true;
+      try {
+        const r = await fetch('/api/connect', {
+          method: 'POST',
+          ...fetchOpts,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        if (r.status === 401) {
+          goLogin();
+          return;
+        }
+        if (!r.ok) {
+          const t = await r.text();
+          throw new Error(t || r.statusText);
+        }
+      } catch (e) {
+        statusEl.textContent = '连接请求失败: ' + e.message;
+        statusEl.className = 'error';
+      }
+      btn.disabled = false;
+    }
+
+    function collectServers(groups) {
+      const list = [];
+      (groups || []).forEach(g => { (g.servers || []).forEach(s => list.push(s)); });
+      return list;
+    }
+
+    function openAdd() {
+      serverIdEl.value = '';
+      modalTitle.textContent = '添加服务器';
+      document.getElementById('name').value = '';
+      document.getElementById('host').value = '';
+      document.getElementById('port').value = '22';
+      document.getElementById('user').value = '';
+      document.getElementById('password').value = '';
+      document.getElementById('keyPath').value = '';
+      document.getElementById('group').value = '';
+      modalMask.classList.remove('hidden');
+    }
+
+    async function openEdit(id) {
+      const r = await fetch('/api/servers', fetchOpts);
+      if (r.status === 401) { goLogin(); return; }
+      if (!r.ok) return;
+      const data = await r.json();
+      const list = collectServers(data.groups || []);
+      const s = list.find(x => x.id === id);
+      if (!s) return;
+      serverIdEl.value = s.id;
+      modalTitle.textContent = '编辑服务器';
+      document.getElementById('name').value = s.name || '';
+      document.getElementById('host').value = s.host || '';
+      document.getElementById('port').value = (s.port && s.port !== 22) ? s.port : '22';
+      document.getElementById('user').value = s.user || '';
+      document.getElementById('password').value = '';
+      document.getElementById('keyPath').value = s.key_path || '';
+      document.getElementById('group').value = s.group || '';
+      modalMask.classList.remove('hidden');
+    }
+
+    function closeModal() { modalMask.classList.add('hidden'); }
+
+    serverForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = serverIdEl.value.trim();
+      const body = {
+        name: document.getElementById('name').value.trim(),
+        host: document.getElementById('host').value.trim(),
+        port: parseInt(document.getElementById('port').value, 10) || 22,
+        user: document.getElementById('user').value.trim(),
+        key_path: document.getElementById('keyPath').value.trim(),
+        group: document.getElementById('group').value.trim()
+      };
+      const pwd = document.getElementById('password').value;
+      if (pwd || !id) body.password = pwd;
+      try {
+        const opts = { method: id ? 'PUT' : 'POST', ...fetchOpts, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+        const url = id ? '/api/servers/' + id : '/api/servers';
+        const r = await fetch(url, opts);
+        if (r.status === 401) { goLogin(); return; }
+        if (!r.ok) throw new Error(await r.text());
+        closeModal();
+        load();
+      } catch (err) {
+        statusEl.textContent = '保存失败: ' + err.message;
+        statusEl.className = 'error';
+      }
+    });
+
+    document.getElementById('btnCancel').addEventListener('click', closeModal);
+    document.getElementById('btnAdd').addEventListener('click', openAdd);
+    modalMask.addEventListener('click', (e) => { if (e.target === modalMask) closeModal(); });
+    document.getElementById('importModalMask').addEventListener('click', (e) => {
+      if (e.target.id === 'importModalMask') {
+        pendingImport = null;
+        document.getElementById('importModalMask').classList.add('hidden');
+      }
+    });
+
+    async function doDelete(id) {
+      if (!confirm('确定要删除这台服务器吗？')) return;
+      try {
+        const r = await fetch('/api/servers/' + id, { method: 'DELETE', ...fetchOpts });
+        if (r.status === 401) { goLogin(); return; }
+        if (!r.ok) throw new Error(await r.text());
+        load();
+      } catch (err) {
+        statusEl.textContent = '删除失败: ' + err.message;
+        statusEl.className = 'error';
+      }
+    }
+
+    checkAuth();
+  </script>
+</body>
+</html>
