@@ -1,6 +1,16 @@
-# SSH-Manager
+# 灵王shell
 
-基于 Go 的 SSH 主机管理工具，通过 **Web 页面** 管理服务器列表、分组、连接，支持主密码保护、配置导出导入与访问日志。
+基于 Go 的 SSH Macos系统本地的主机管理工具，通过 **Web 页面** 管理服务器列表、分组、连接，支持主密码保护、配置导出导入与访问日志。
+
+---
+
+## 界面预览
+
+| 首次使用：设置主密码 | 登录界面 | 管理服务器 |
+|----------------------|----------|------------|
+| ![设置密码](01.png) | ![登录](02.png) | ![管理服务器](03.png) |
+
+*01 - 首次使用设置主密码 · 02 - 登录界面 · 03 - 主机列表与连接管理*
 
 ---
 
@@ -22,14 +32,14 @@
 
 ```bash
 go mod tidy
-go build -o ssh-manager ./cmd/ssh-manager/
-./ssh-manager
+go build -o lwshell ./cmd/lwshell/
+./lwshell
 ```
 
 默认在 `http://127.0.0.1:21008` 启动 Web 服务。**启动前会自动关闭占用该端口的进程**（避免重复启动需先手动关旧服务）。指定端口：
 
 ```bash
-./ssh-manager --http=:9000
+./lwshell --http=:9000
 ```
 
 ### macOS 应用（.app）
@@ -40,18 +50,18 @@ chmod +x build-app.sh
 ./build-app.sh universal     # 通用二进制（arm64 + amd64）
 ```
 
-将生成的 **SSH-Manager.app** 拖到「应用程序」，双击即可：会弹出终端并打开浏览器，首次为「设置主密码」，之后为「登录」，登录后进入主机管理。**关闭终端窗口即停止 Web 服务。**
+将生成的 **lwshell.app** 拖到「应用程序」，双击即可：会弹出终端并打开浏览器，首次为「设置主密码」，之后为「登录」，登录后进入主机管理。**关闭终端窗口即停止 Web 服务。**
 
 ---
 
 ## 配置与数据存储
 
-所有数据均在当前用户的**配置目录**下的 `ssh-manager` 子目录中。路径由 Go 的 `os.UserConfigDir()` 决定，因系统而异：
+所有数据均在当前用户的**配置目录**下的 `lwshell` 子目录中。路径由 Go 的 `os.UserConfigDir()` 决定，因系统而异：
 
 | 系统 | 配置目录（基础路径） |
 |------|----------------------|
-| **macOS** | `~/Library/Application Support/ssh-manager/` |
-| **Linux / 其他** | `~/.config/ssh-manager/`（或 `$XDG_CONFIG_HOME/ssh-manager/`） |
+| **macOS** | `~/Library/Application Support/lwshell/` |
+| **Linux / 其他** | `~/.config/lwshell/`（或 `$XDG_CONFIG_HOME/lwshell/`） |
 
 （`~` 即用户主目录，如 macOS 上 `/Users/你的用户名`。）
 
@@ -61,15 +71,15 @@ chmod +x build-app.sh
 | **主机信息（服务器列表）** | `servers.json` | JSON：每台主机的 id、name、host、port、user、**password**（SSH 密码）、key_path、group。**主机密码在此文件中为明文**，备份或导出时需妥善保管。 |
 | **访问日志** | `access.log` | 每次连接尝试一行：时间(UTC)、主机 id/name/host/port/user、成功或失败，失败时带错误信息。 |
 
-**macOS 下完整路径示例**：`/Users/你的用户名/Library/Application Support/ssh-manager/servers.json`、`.auth_hash`、`access.log`。
+**macOS 下完整路径示例**：`/Users/你的用户名/Library/Application Support/lwshell/servers.json`、`.auth_hash`、`access.log`。
 
 ### 主密码放在哪里？
 
-- **Web 登录用的主密码**：只存哈希。macOS 上为 `~/Library/Application Support/ssh-manager/.auth_hash`，Linux 上为 `~/.config/ssh-manager/.auth_hash`，不存明文。
+- **Web 登录用的主密码**：只存哈希。macOS 上为 `~/Library/Application Support/lwshell/.auth_hash`，Linux 上为 `~/.config/lwshell/.auth_hash`，不存明文。
 
 ### 主机信息放在哪里？
 
-- **服务器列表及每台主机的 SSH 密码/私钥路径**：macOS 上在 `~/Library/Application Support/ssh-manager/servers.json`，Linux 上在 `~/.config/ssh-manager/servers.json`；其中主机密码（`password` 字段）为明文。
+- **服务器列表及每台主机的 SSH 密码/私钥路径**：macOS 上在 `~/Library/Application Support/lwshell/servers.json`，Linux 上在 `~/.config/lwshell/servers.json`；其中主机密码（`password` 字段）为明文。
 
 ---
 
@@ -94,11 +104,13 @@ chmod +x build-app.sh
 
 ## 访问日志格式
 
-`access.log` 每行一条记录，字段用空格分隔，示例：
+`access.log` 每行一条记录，字段用空格分隔。每次点击「连接」会先写一条 `status=started`，会话结束后再写一条 `success` 或 `failure`，示例：
 
 ```
-2025-01-30T12:00:00Z connect id=1 name=my-server host=192.168.1.1 port=22 user=root success
-2025-01-30T12:01:00Z connect id=2 name=prod host=10.0.0.1 port=22 user=admin failure err="connection refused"
+2025-01-30T12:00:00Z connect id=1 name=my-server host=192.168.1.1 port=22 user=root status=started
+2025-01-30T12:00:05Z connect id=1 name=my-server host=192.168.1.1 port=22 user=root success
+2025-01-30T12:01:00Z connect id=2 name=prod host=10.0.0.1 port=22 user=admin status=started
+2025-01-30T12:01:01Z connect id=2 name=prod host=10.0.0.1 port=22 user=admin failure err="connection refused"
 ```
 
 ---
@@ -113,8 +125,8 @@ chmod +x build-app.sh
 ## 项目结构（简要）
 
 ```
-jumpserver-go/
-├── cmd/ssh-manager/          # 主程序
+lwshell/
+├── cmd/lwshell/              # 主程序
 │   ├── main.go               # 入口：Web 服务 / --connect-id
 │   └── web/                  # 前端页面（embed）
 │       ├── index.html        # 主界面（主机列表、连接、导出导入等）
@@ -136,7 +148,7 @@ jumpserver-go/
 
 ## 常见问题
 
-- **忘记主密码**：删除配置目录下的 `.auth_hash`（macOS：`~/Library/Application Support/ssh-manager/.auth_hash`，Linux：`~/.config/ssh-manager/.auth_hash`）后重新打开 Web，会再次出现「设置主密码」页；服务器列表仍在 `servers.json`，不受影响。
+- **忘记主密码**：删除配置目录下的 `.auth_hash`（macOS：`~/Library/Application Support/lwshell/.auth_hash`，Linux：`~/.config/lwshell/.auth_hash`）后重新打开 Web，会再次出现「设置主密码」页；服务器列表仍在 `servers.json`，不受影响。
 - **只想迁移主机列表**：使用 Web 内「导出」下载 JSON，在新机器上「导入」并选择「替换」或「合并」即可。
 - **连接时终端标题被远程改掉**：程序在连接期间会定期刷新终端标题，若仍被覆盖，多为终端或 SSH 服务端行为，可尝试换终端（如 iTerm2）。
 
@@ -150,14 +162,14 @@ jumpserver-go/
 
 ## 推送到 GitHub
 
-1. 在 [GitHub](https://github.com/new) 新建仓库（如 `jumpserver-go`），不要勾选「Add a README」。
+1. 在 [GitHub](https://github.com/new) 新建仓库（如 `lwshell`），不要勾选「Add a README」。
 2. 在本地执行（将 `YOUR_USERNAME` 换成你的 GitHub 用户名）：
 
 ```bash
-cd /path/to/jumpserver-go
-git remote add origin https://github.com/YOUR_USERNAME/jumpserver-go.git
+cd /path/to/lwshell
+git remote add origin https://github.com/YOUR_USERNAME/lwshell.git
 git branch -M main
 git push -u origin main
 ```
 
-若使用 SSH：`git remote add origin git@github.com:YOUR_USERNAME/jumpserver-go.git`
+若使用 SSH：`git remote add origin git@github.com:YOUR_USERNAME/lwshell.git`

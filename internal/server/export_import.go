@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"jumpserver-go/internal/config"
-	"jumpserver-go/internal/models"
+	"lwshell/internal/config"
+	"lwshell/internal/models"
 )
 
 // Export 导出完整服务器配置为 JSON（含密码），便于迁移或备份
@@ -22,7 +22,7 @@ func Export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="ssh-manager-servers.json"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="lwshell-servers.json"`)
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

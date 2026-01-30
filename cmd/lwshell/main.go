@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"jumpserver-go/internal/audit"
-	"jumpserver-go/internal/auth"
-	"jumpserver-go/internal/config"
-	"jumpserver-go/internal/models"
-	"jumpserver-go/internal/server"
-	"jumpserver-go/internal/ssh"
+	"lwshell/internal/audit"
+	"lwshell/internal/auth"
+	"lwshell/internal/config"
+	"lwshell/internal/models"
+	"lwshell/internal/server"
+	"lwshell/internal/ssh"
 )
 
 //go:embed web
@@ -56,6 +56,8 @@ func runConnect(id string) {
 		fmt.Fprintln(os.Stderr, "server not found:", id)
 		os.Exit(1)
 	}
+	// 立即写入「开始连接」日志，避免用户直接关终端时没有记录
+	audit.LogConnectStart(target)
 	// 在终端中显示当前连接的服务器，并固定窗口标题为服务器名（连接期间会定期刷新，防止被远程覆盖）
 	showServerBanner(target)
 	port := target.Port
@@ -109,7 +111,7 @@ func runHTTP(addr string) {
 	mux.HandleFunc("/api/import", auth.RequireAuth(server.Import))
 	webRoot, _ := fs.Sub(webFS, "web")
 	mux.Handle("/", http.FileServer(http.FS(webRoot)))
-	fmt.Println("SSH-Manager Web: http://127.0.0.1" + addr)
+	fmt.Println("lwshell Web: http://127.0.0.1" + addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -158,4 +160,3 @@ func killProcessOnPort(port string) {
 		}
 	}
 }
-

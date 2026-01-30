@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SSH 主机管理</title>
+  <title>lwshell - SSH 主机管理</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -161,7 +161,7 @@
   <div id="mainScreen" style="display:none;">
     <header class="main-header">
       <div class="main-inner">
-        <h1>SSH 主机管理</h1>
+        <h1>lwshell</h1>
         <div class="toolbar">
           <button type="button" class="btn btn-add" id="btnAdd">+ 添加服务器</button>
           <button type="button" class="btn btn-export" id="btnExport">导出配置</button>
@@ -359,7 +359,7 @@
         const blob = await r.blob();
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'ssh-manager-servers.json';
+        a.download = 'lwshell-servers.json';
         a.click();
         URL.revokeObjectURL(a.href);
       } catch (e) {

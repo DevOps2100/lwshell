@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 
-	"jumpserver-go/internal/models"
+	"lwshell/internal/models"
 )
 
 // ConnectOptions 连接时可覆盖的选项（如临时指定证书路径）

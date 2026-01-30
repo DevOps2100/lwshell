@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"jumpserver-go/internal/models"
+	"lwshell/internal/models"
 )
 
 func logDir() (string, error) {
@@ -15,7 +15,7 @@ func logDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "ssh-manager"), nil
+	return filepath.Join(dir, "lwshell"), nil
 }
 
 func logPath() (string, error) {
@@ -26,19 +26,39 @@ func logPath() (string, error) {
 	return filepath.Join(dir, "access.log"), nil
 }
 
-// LogConnect 记录 SSH 连接尝试：主机、时间、成功与否（在 --connect-id 流程中调用）
-func LogConnect(s *models.Server, connectErr error) {
+// writeLogLine 向 access.log 写入一行并立即 Sync，确保进程异常退出时也能落盘
+func writeLogLine(line string) {
 	p, err := logPath()
 	if err != nil {
 		return
 	}
 	dir := filepath.Dir(p)
-	_ = os.MkdirAll(dir, 0700)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return
+	}
 	f, err := os.OpenFile(p, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	_, _ = f.WriteString(line)
+	_ = f.Sync()
+	_ = f.Close()
+}
+
+// LogConnectStart 在发起 SSH 连接时立即记录（点击「连接」后、ssh.Connect 阻塞前调用）
+func LogConnectStart(s *models.Server) {
+	ts := time.Now().UTC().Format(time.RFC3339)
+	port := s.Port
+	if port <= 0 {
+		port = 22
+	}
+	line := fmt.Sprintf("%s connect id=%s name=%s host=%s port=%d user=%s status=started\n",
+		ts, s.ID, escape(s.Name), s.Host, port, escape(s.User))
+	writeLogLine(line)
+}
+
+// LogConnect 记录 SSH 连接结束：成功或失败（在 ssh.Connect 返回后调用）
+func LogConnect(s *models.Server, connectErr error) {
 	ts := time.Now().UTC().Format(time.RFC3339)
 	port := s.Port
 	if port <= 0 {
@@ -54,7 +74,7 @@ func LogConnect(s *models.Server, connectErr error) {
 		line += fmt.Sprintf(" err=%s", escape(connectErr.Error()))
 	}
 	line += "\n"
-	_, _ = f.WriteString(line)
+	writeLogLine(line)
 }
 
 func escape(s string) string {

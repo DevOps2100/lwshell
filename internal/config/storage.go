@@ -6,17 +6,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"jumpserver-go/internal/models"
+	"lwshell/internal/models"
 )
 
-// configPath 配置文件路径：os.UserConfigDir()/ssh-manager/servers.json
-// macOS 为 ~/Library/Application Support/ssh-manager/servers.json，Linux 为 ~/.config/ssh-manager/servers.json
+// configPath 配置文件路径：os.UserConfigDir()/lwshell/servers.json
+// macOS 为 ~/Library/Application Support/lwshell/servers.json，Linux 为 ~/.config/lwshell/servers.json
 func configPath() (string, error) {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
-	p := filepath.Join(dir, "ssh-manager", "servers.json")
+	p := filepath.Join(dir, "lwshell", "servers.json")
 	return p, nil
 }
 

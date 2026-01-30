@@ -1,6 +1,6 @@
 # 编译产物与本地应用
-/ssh-manager
-SSH-Manager.app/
+/lwshell
+lwshell.app/
 *.exe
 
 # 缓存与系统

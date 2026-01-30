@@ -14,7 +14,7 @@ func authDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "ssh-manager"), nil
+	return filepath.Join(dir, "lwshell"), nil
 }
 
 func hashPath() (string, error) {

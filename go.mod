@@ -1,4 +1,4 @@
-module jumpserver-go
+module lwshell
 
 go 1.21
 

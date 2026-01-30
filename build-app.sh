@@ -6,23 +6,23 @@
 set -e
 cd "$(dirname "$0")"
 
-APP_NAME="SSH-Manager"
+APP_NAME="lwshell"
 APP_DIR="$APP_NAME.app"
 CONTENTS="$APP_DIR/Contents"
 MACOS="$CONTENTS/MacOS"
 RESOURCES="$CONTENTS/Resources"
-BINARY_NAME="ssh-manager"
+BINARY_NAME="lwshell"
 LDFLAGS="-s -w"
 
 echo "[1/4] 编译 Go 程序..."
 if [[ "${1:-}" == "universal" ]]; then
   echo "  → 构建 universal (darwin/arm64 + darwin/amd64)"
-  CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "${BINARY_NAME}_arm64" ./cmd/ssh-manager/
-  CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o "${BINARY_NAME}_amd64" ./cmd/ssh-manager/
+  CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "${BINARY_NAME}_arm64" ./cmd/lwshell/
+  CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o "${BINARY_NAME}_amd64" ./cmd/lwshell/
   lipo -create -output "$BINARY_NAME" "${BINARY_NAME}_arm64" "${BINARY_NAME}_amd64"
   rm -f "${BINARY_NAME}_arm64" "${BINARY_NAME}_amd64"
 else
-  go build -ldflags="$LDFLAGS" -o "$BINARY_NAME" ./cmd/ssh-manager/
+  go build -ldflags="$LDFLAGS" -o "$BINARY_NAME" ./cmd/lwshell/
 fi
 
 echo "[2/4] 创建 .app 包结构..."
@@ -39,7 +39,7 @@ RUN_CMD="$RESOURCES/run.command"
 cat > "$RUN_CMD" << 'ENDRUN'
 #!/bin/bash
 BINDIR="$(cd "$(dirname "$0")/../MacOS" && pwd)"
-EXEC="$BINDIR/ssh-manager"
+EXEC="$BINDIR/lwshell"
 
 "$EXEC" --http=:21008 &
 PID=$!
@@ -68,11 +68,11 @@ cat > "$plist" << 'PLIST'
   <key>CFBundleExecutable</key>
   <string>launcher</string>
   <key>CFBundleIdentifier</key>
-  <string>com.ssh-manager.app</string>
+  <string>com.lwshell.app</string>
   <key>CFBundleName</key>
-  <string>SSH-Manager</string>
+  <string>lwshell</string>
   <key>CFBundleDisplayName</key>
-  <string>SSH-Manager</string>
+  <string>lwshell</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
@@ -87,7 +87,7 @@ echo ""
 echo "已完成: $APP_DIR"
 echo ""
 echo "使用："
-echo "  · 双击 $APP_NAME.app，或拖到「应用程序」后从启动台/Spotlight 打开"
+echo "  · 双击 ${APP_NAME}.app，或拖到「应用程序」后从启动台/Spotlight 打开"
 echo "  · 会弹出终端并打开浏览器：首次为「设置主密码」页，之后为「登录」页，登录后进入主机管理"
 echo "  · 关闭终端窗口即停止 Web 服务"
 echo ""

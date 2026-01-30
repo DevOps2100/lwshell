@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"jumpserver-go/internal/config"
-	"jumpserver-go/internal/models"
+	"lwshell/internal/config"
+	"lwshell/internal/models"
 )
 
 // GroupResp 分组（不含密码）
