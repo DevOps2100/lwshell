@@ -1,0 +1,3 @@
+#!/bin/bash
+CONTENTS="$(cd "$(dirname "$0")/.." && pwd)"
+open "$CONTENTS/Resources/run.command"
